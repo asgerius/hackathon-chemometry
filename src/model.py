@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import pickle
+from pyexpat import features
 
 import numpy as np
 import pelutils.ds.distributions as dists
@@ -53,15 +54,15 @@ class Baseline(Model):
 
 class PartialLeastSquares(Model):
 
-    def fit(self, data: Data):
-        self.pls = PLSRegression(n_components=3)
+    def __init__(self, n_components = 80):
+        self.pls = PLSRegression(n_components=n_components)
 
+    def fit(self, data: Data):
         features = data.features.reshape(-1, 700)
         labels = data.one_hot_labels().reshape(-1,3)
         self.pls.fit(features, labels)
 
     def predict(self, data: Data) -> np.ndarray:
-        
         features = data.features.reshape(-1,700)
         preds = self.pls.predict(features)
         preds = preds.argmax(axis=1) + 1
@@ -70,7 +71,34 @@ class PartialLeastSquares(Model):
         return np.squeeze(preds)
 
     def __str__(self) -> str:
-        return "PartialLeastSquares"
+        return "PartialLeastSquares(n_components =%d)"% self.pls.n_components
+
+class SDG(Model):
+
+    def __init__(self, alpha = 0.001, max_iter=100):
+        self.SGD = SGDClassifier(alpha = alpha, max_iter=max_iter)
+
+    def fit(self, data: Data):
+        features = data.features.reshape(-1,700)
+        # labels = data.one_hot_labels().reshape(-1,3)
+        labels = data.labels.ravel()
+        print(labels.shape)
+        self.SGD.fit(features, labels)
+
+    def predict(self, data: Data) -> np.ndarray:
+        features = data.features.reshape(-1,700)
+        preds = self.SGD.predict(features)
+        
+        preds = preds.reshape(data.labels.shape)
+        print(preds.shape)
+        # preds = preds.argmax(axis=1) + 1
+        preds = mode(preds, axis=2, keepdims=True).mode
+        print(preds.shape)
+        return 
+
+    def __str__(self) -> str:
+        return "SDG"
+
 
 class RidgeRegression(Model):
 
