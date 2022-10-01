@@ -1,6 +1,8 @@
 from __future__ import annotations
+from tkinter import W
 
 import numpy as np
+from pyparsing import with_attribute
 from scipy.stats import linregress
 
 from src.data import Data, load_from_pickle
@@ -45,17 +47,47 @@ def apply_combined_linear(data: Data, lr):
     """ INPLACE """
     data.features = data.features - (lr.slope * data.nm + lr.intercept)
 
+def get_within_mean(data: Data):
+    flatfeatures = data.features.reshape(-1,700)
+    within_mean = np.zeros_like(flatfeatures)
+    sum = 0
+    for sample in range(int(flatfeatures.shape[0]/data.features.shape[2])):
+        #print(flatfeatures[sample*(data.features.shape[2]):sample*(data.features.shape[2])+31].shape)
+        mean = flatfeatures[sample*(data.features.shape[2]):sample*(data.features.shape[2])+31].std(axis=0)
+        #print(mean.shape)
+        #print(mean)
+        for scan in range (32):
+            within_mean[scan+sample*data.features.shape[2]] = mean
+    #print(within_mean)
+    return within_mean.reshape(data.features.shape)
+
+def get_within_sd(data: Data):
+    flatfeatures = data.features.reshape(-1,700)
+    within_sd = np.zeros_like(flatfeatures)
+    sum = 0
+    for sample in range(int(flatfeatures.shape[0]/data.features.shape[2])):
+        sd = flatfeatures[sample*(data.features.shape[2]):sample*(data.features.shape[2])+31].mean(axis=0)+ 1e-6
+        for scan in range (32):
+            within_sd[scan+sample*data.features.shape[2]] = sd
+    return within_sd.reshape(data.features.shape)
+
+def apply_within_mean(data: Data, within_mean: Data):
+    return np.concatenate((data.features,within_mean), axis=-1)
+
+def apply_within_sd(data: Data, within_sd: Data):
+    return np.concatenate((data.features,within_sd), axis=-1)
+
 if __name__ == "__main__":
 
     data = load_from_pickle()
     lr = combined_linear(data)
     apply_combined_linear(data, lr)
-    logs=get_logarithm(data)
-    ders=get_derivatives(data)
-    print(np.shape(data.features))
-    print(np.shape(ders))
-    data.features=apply_derivatives(data.features,ders)
-    print(np.shape(data.features))
-    print(logs.shape)
-    data.features = apply_logs(data.features,logs)
-    print(np.shape(data.features))
+    print(data.features.shape) 
+    wmean = get_within_mean(data)
+    print(wmean.shape)
+    wsd = get_within_sd(data)
+    print(wsd.shape)
+    data.features = apply_within_mean(data,wmean)
+    print(data.features.shape) 
+    data.features = apply_within_sd(data,wsd)
+    print(data.features.shape) 
