@@ -77,7 +77,8 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
     log("Got model %s" % model)
 
     log("Fitting")
-    model.fit(data)
+    with log.no_log:
+        model.fit(data)
 
     log("Saving model")
     model.save(path)
