@@ -7,6 +7,7 @@ import numpy as np
 import pelutils.ds.distributions as dists
 from sklearn.cross_decomposition import PLSRegression
 from scipy.stats import mode
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Ridge
 
 from data import Data
@@ -120,3 +121,23 @@ class StatShit(Model):
 
     def __str__(self) -> str:
         return "Log likelihood (lognorm)"
+
+class RandomForest(Model):
+
+    def __init__(self):
+        self.forest = RandomForestClassifier()
+
+    def fit(self, data: Data):
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        labels = data.one_hot_labels().reshape(-1, 3)
+        self.forest.fit(features, labels)
+
+    def predict(self, data: Data) -> np.ndarray:
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        preds = self.forest.predict(features).argmax(axis=1) + 1
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=-1).mode
+        return np.squeeze(preds)
+
+    def __str__(self) -> str:
+        return "RandomForest"
