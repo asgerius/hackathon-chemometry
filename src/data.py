@@ -42,6 +42,13 @@ class Data:
     features: np.ndarray
     labels: np.ndarray
 
+    def __post_init__(self):
+        self.num_labels = len(pd.unique(self.labels.flat))
+
+    @property
+    def num_features(self) -> int:
+        return self.features.shape[-1]
+
     def split_by_index(self, index: np.ndarray) -> Data:
         return Data(
             self.nm.copy(),

@@ -8,6 +8,7 @@ local_*
 *.png
 *.npy
 out/
+dist-plots/
 
 # Latex
 *.aux
