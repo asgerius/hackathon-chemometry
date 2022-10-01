@@ -5,7 +5,9 @@ from cProfile import label
 import pickle
 
 import numpy as np
-from sklearn.cross_decomposition import PLSRegression 
+from sklearn.cross_decomposition import PLSRegression
+from scipy.stats import mode
+from sklearn.linear_model import Ridge
 
 from data import Data
 
@@ -79,3 +81,23 @@ class PartialLeastSquares(Model):
 
 
 
+
+class RidgeRegression(Model):
+
+    def __init__(self, alpha=0):
+        self.ridge = Ridge(alpha=alpha)
+
+    def fit(self, data: Data):
+        features = data.features.reshape((-1, 700))
+        labels = data.one_hot_labels().reshape(-1, 3)
+        self.ridge.fit(features, labels)
+
+    def predict(self, data: Data) -> np.ndarray:
+        features = data.features.reshape((-1, 700))
+        preds = self.ridge.predict(features).argmax(axis=1) + 1
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=-1).mode
+        return np.squeeze(preds)
+
+    def __str__(self) -> str:
+        return "RidgeRegression(alpha=%s)" % self.ridge.alpha

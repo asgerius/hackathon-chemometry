@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+import torch
+import torch.nn.functional as F
 
 
 def load_dataframe() -> pd.DataFrame:
@@ -46,6 +48,9 @@ class Data:
             self.features[index].copy(),
             self.labels[index].copy(),
         )
+
+    def one_hot_labels(self) -> np.ndarray:
+        return F.one_hot(torch.from_numpy(self.labels) - 1, num_classes=3).numpy()
 
     def __len__(self) -> int:
         return self.features.shape[0]
