@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pelutils.ds.plots as plots
 
-from data import load_dataframe, data_as_arrays
+from data import load_dataframe, data_as_arrays, load_from_pickle
 
 
 def plot_all_data(nm: np.ndarray, features: np.ndarray, labels: np.ndarray):
@@ -30,6 +30,5 @@ def plot_all_data(nm: np.ndarray, features: np.ndarray, labels: np.ndarray):
 
 if __name__ == "__main__":
 
-    df = load_dataframe()
-    nm, features, labels = data_as_arrays(df)
+    nm, features, labels = load_from_pickle()
     plot_all_data(nm, features, labels)

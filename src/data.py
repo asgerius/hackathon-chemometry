@@ -28,5 +28,15 @@ def data_as_arrays(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray
 
     return nm, features, labels
 
+def save_to_pickle(nm: np.ndarray, features: np.ndarray, labels: np.ndarray):
+    np.save("nm", nm)
+    np.save("features", features)
+    np.save("labels", labels)
 
+def load_from_pickle() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return np.load("nm.npy"), np.load("features.npy"), np.load("labels.npy")
 
+if __name__ == "__main__":
+    df = load_dataframe()
+    nm, features, labels = data_as_arrays(df)
+    save_to_pickle(nm, features, labels)
