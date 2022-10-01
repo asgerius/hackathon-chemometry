@@ -29,6 +29,10 @@ class Model(abc.ABC):
         with open(path, "rb") as f:
             return pickle.load(path)
 
+    @abc.abstractmethod
+    def __str__(self) -> str:
+        pass
+
 class Baseline(Model):
 
     def fit(self, data: Data):
