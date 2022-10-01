@@ -55,32 +55,21 @@ class PartialLeastSquares(Model):
     def fit(self, data: Data):
         self.pls = PLSRegression(n_components=3)
 
-        labels = data.labels.ravel()
         features = data.features.reshape(-1, 700)
-
+        labels = data.one_hot_labels().reshape(-1,3)
         self.pls.fit(features, labels)
 
     def predict(self, data: Data) -> np.ndarray:
         
         features = data.features.reshape(-1,700)
-        
-        prediction = self.predict(features).reshape(())
+        preds = self.pls.predict(features)
+        preds = preds.argmax(axis=1) + 1
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=2, keepdims=True).mode
+        return np.squeeze(preds)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def __str__(self) -> str:
+        return "PartialLeastSquares"
 
 class RidgeRegression(Model):
 
