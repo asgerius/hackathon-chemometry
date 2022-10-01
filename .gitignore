@@ -7,6 +7,7 @@ local_*
 .python-version
 *.png
 *.npy
+out/
 
 # Latex
 *.aux

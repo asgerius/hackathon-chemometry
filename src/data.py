@@ -28,6 +28,10 @@ def data_as_arrays(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray
         features[s, r, sc] = row[df.columns[4:]].values
         labels[s, r, sc] = row.Type
 
+    for i in range(num_scan):
+        for j in range(num_replicate):
+            assert (labels[i, j, 0] == labels[i, j]).all()
+
     return nm, features, labels
 
 @dataclass
@@ -35,6 +39,16 @@ class Data:
     nm: np.ndarray
     features: np.ndarray
     labels: np.ndarray
+
+    def split_by_index(self, index: np.ndarray) -> Data:
+        return Data(
+            self.nm.copy(),
+            self.features[index].copy(),
+            self.labels[index].copy(),
+        )
+
+    def __len__(self) -> int:
+        return self.features.shape[0]
 
 def save_to_pickle(data: Data):
     np.save("nm", data.nm)
