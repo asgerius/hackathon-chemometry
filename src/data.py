@@ -42,13 +42,14 @@ def save_to_pickle(data: Data):
     np.save("labels", data.labels)
 
 def load_from_pickle() -> Data:
-    return Data(
-        nm = np.load("nm.npy"),
-        features = np.load("features.npy"),
-        labels = np.load("labels.npy"),
-    )
-
-if __name__ == "__main__":
-    df = load_dataframe()
-    nm, features, labels = data_as_arrays(df)
-    save_to_pickle(Data(nm, features, labels))
+    try:
+        return Data(
+            nm = np.load("nm.npy"),
+            features = np.load("features.npy"),
+            labels = np.load("labels.npy"),
+        )
+    except FileNotFoundError:
+        df = load_dataframe()
+        nm, features, labels = data_as_arrays(df)
+        save_to_pickle(Data(nm, features, labels))
+        return load_from_pickle()
