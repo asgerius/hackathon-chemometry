@@ -45,6 +45,15 @@ def cv(path: str, model_name: str, num_splits: int):
     log.section("Done classifying")
     log("Mean accuracy: %.2f %%" % (100 * np.mean(accs)))
 
+    log.section("Retraining on entire dataset")
+
+    model: model_module.Model = getattr(model_module, model_name)()
+    log("Got model %s" % model)
+
+    log("Fitting")
+    model.fit(data)
+
+    log("Saving model")
     model.save(path)
 
 if __name__ == "__main__":
