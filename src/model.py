@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import abc
+from cProfile import label
 import pickle
 
 import numpy as np
+from sklearn.cross_decomposition import PLSRegression 
 
 from data import Data
+
+
 
 
 class Model(abc.ABC):
@@ -39,3 +43,35 @@ class Baseline(Model):
 
     def __str__(self) -> str:
         return "Baseline(1)"
+
+class PartialLeastSquares(Model):
+
+    def fit(self, data: Data):
+        self.pls = PLSRegression(n_components=3)
+
+        labels = data.labels.ravel()
+        features = data.features.reshape(-1, 700)
+
+        self.pls.fit(features, labels)
+
+    def predict(self, data: Data) -> np.ndarray:
+        
+        features = data.features.reshape(-1,700)
+        
+        prediction = self.predict(features).reshape(())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
