@@ -9,7 +9,7 @@ import pelutils.ds.distributions as dists
 from sklearn.cross_decomposition import PLSRegression
 from scipy.stats import mode
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, SGDClassifier
 
 from data import Data
 
@@ -55,15 +55,15 @@ class Baseline(Model):
 class PartialLeastSquares(Model):
 
     def __init__(self, n_components = 80):
-        self.pls = PLSRegression(n_components=n_components)
+        self.pls = PLSRegression(n_components=n_components, max_iter= 5000)
 
     def fit(self, data: Data):
-        features = data.features.reshape(-1, 700)
+        features = data.features.reshape((-1, data.features.shape[-1]))
         labels = data.one_hot_labels().reshape(-1,3)
         self.pls.fit(features, labels)
 
     def predict(self, data: Data) -> np.ndarray:
-        features = data.features.reshape(-1,700)
+        features = data.features.reshape((-1, data.features.shape[-1]))
         preds = self.pls.predict(features)
         preds = preds.argmax(axis=1) + 1
         preds = preds.reshape(data.labels.shape)
@@ -73,20 +73,56 @@ class PartialLeastSquares(Model):
     def __str__(self) -> str:
         return "PartialLeastSquares(n_components =%d)"% self.pls.n_components
 
+class Mixed(Model):
+    def __init__(self, n_components = 50, alpha = 0.01, n_estimators=500):
+        self.pls = PLSRegression(n_components=n_components, max_iter= 5000)
+        self.ridge = Ridge(alpha=alpha, max_iter= 5000)
+        # self.forest = RandomForestClassifier(n_estimators=n_estimators)
+
+    def fit(self, data: Data):
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        labels = data.one_hot_labels().reshape(-1,3)
+        self.pls.fit(features, labels)
+        self.ridge.fit(features, labels)
+        # self.forest.fit(features, labels)
+
+    def predict(self, data: Data) -> np.ndarray:
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        preds_pls = self.pls.predict(features).argmax(axis=1) + 1
+        preds_ridge = self.ridge.predict(features).argmax(axis=1) + 1
+        # preds_forest = self.forest.predict(features).argmax(axis=1) + 1
+        preds = np.concatenate((preds_pls,preds_ridge), axis= -1)
+        # preds = np.concatenate((preds,preds_forest), axis= -1)
+
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=2, keepdims=True).mode
+        return np.squeeze(preds)
+
+    def predict(self, data: Data) -> np.ndarray:
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        preds = self.ridge.predict(features).argmax(axis=1) + 1
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=-1).mode
+        return np.squeeze(preds)
+
+    def __str__(self) -> str:
+        return "PartialLeastSquares(n_components =%d)"% self.pls.n_components
+        
+
 class SDG(Model):
 
     def __init__(self, alpha = 0.001, max_iter=100):
         self.SGD = SGDClassifier(alpha = alpha, max_iter=max_iter)
 
     def fit(self, data: Data):
-        features = data.features.reshape(-1,700)
+        features = data.features.reshape((-1, data.features.shape[-1]))
         # labels = data.one_hot_labels().reshape(-1,3)
         labels = data.labels.ravel()
         print(labels.shape)
         self.SGD.fit(features, labels)
 
     def predict(self, data: Data) -> np.ndarray:
-        features = data.features.reshape(-1,700)
+        features = data.features.reshape((-1, data.features.shape[-1]))
         preds = self.SGD.predict(features)
         
         preds = preds.reshape(data.labels.shape)
@@ -102,8 +138,8 @@ class SDG(Model):
 
 class RidgeRegression(Model):
 
-    def __init__(self, alpha=0.02):
-        self.ridge = Ridge(alpha=alpha)
+    def __init__(self, alpha=0.001):
+        self.ridge = Ridge(alpha=alpha, max_iter= 5000)
 
     def fit(self, data: Data):
         features = data.features.reshape((-1, data.features.shape[-1]))
