@@ -59,6 +59,17 @@ class Data:
     def one_hot_labels(self) -> np.ndarray:
         return F.one_hot(torch.from_numpy(self.labels) - 1, num_classes=3).numpy()
 
+    def bagging(self, n: int) -> list[Data]:
+        datas = list()
+        for i in range(n):
+            index = np.random.randint(0, len(self), len(self))
+            datas.append(Data(
+                self.nm.copy(),
+                self.features[index].copy(),
+                self.labels[index].copy(),
+            ))
+        return datas
+
     def __len__(self) -> int:
         return self.features.shape[0]
 
