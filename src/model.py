@@ -2,10 +2,18 @@ from __future__ import annotations
 
 import abc
 import pickle
+<<<<<<< HEAD
 from pyexpat import features
+=======
+from dataclasses import dataclass
+>>>>>>> 9908f64... Shitty NN
 
 import numpy as np
 import pelutils.ds.distributions as dists
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from pelutils import log
 from sklearn.cross_decomposition import PLSRegression
 from scipy.stats import mode
 from sklearn.ensemble import RandomForestClassifier
@@ -14,7 +22,7 @@ from sklearn.linear_model import Ridge, SGDClassifier
 from data import Data
 
 
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Model(abc.ABC):
 
@@ -205,3 +213,157 @@ class RandomForest(Model):
 
     def __str__(self) -> str:
         return "RandomForest"
+
+
+
+@dataclass
+class ModelConfig:
+    state_size:          int
+    hidden_layer_sizes:  list[int]
+    num_residual_blocks: int
+    residual_size:       int
+    dropout:             float
+
+class _BaseModel(abc.ABC, nn.Module):
+    def __init__(self, cfg: ModelConfig):
+        super().__init__()
+        self.cfg = cfg
+        self.build_model()
+
+    @abc.abstractmethod
+    def build_model(self):
+        pass
+
+    @abc.abstractmethod
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        pass
+
+    def activation_transform_layers(self, size: int) -> tuple[nn.Module, nn.Module, nn.Module]:
+        return (
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(size),
+            nn.Dropout(p=self.cfg.dropout, inplace=True),
+        )
+
+    def numel(self) -> int:
+        """ Number of model parameters. Further docs here: https://pokemondb.net/pokedex/numel """
+        return sum(p.numel() for p in self.parameters())
+
+    def all_params(self) -> torch.Tensor:
+        """ Returns an array of all model parameters """
+        return torch.cat([x.detach().view(-1) for x in self.state_dict().values()])
+
+class NNModel(_BaseModel):
+
+    def build_model(self):
+
+        # Build initial fully connected layers
+        fully_connected = list()
+        layer_sizes = [self.cfg.state_size] + self.cfg.hidden_layer_sizes + [self.cfg.residual_size]
+        for in_size, out_size in zip(layer_sizes[:-1], layer_sizes[1:]):
+            fully_connected.extend([
+                nn.Linear(in_size, out_size),
+                *self.activation_transform_layers(out_size),
+            ])
+        self.fully_connected = nn.Sequential(*fully_connected)
+
+        # Build residual layers
+        self.residual_blocks = nn.Sequential(*(
+            _ResidualBlock(self.cfg) for _ in range(self.cfg.num_residual_blocks)
+        ))
+
+        # Final linear output layer
+        self.output_layer = nn.Linear(self.cfg.residual_size, 3)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.fully_connected(x)
+        x = self.residual_blocks(x)
+        x = self.output_layer(x)
+        return x
+
+class _ResidualBlock(_BaseModel):
+
+    num_layers = 2
+
+    def build_model(self):
+        fully_connected = list()
+        for i in range(self.num_layers):
+            fully_connected.append(
+                nn.Linear(self.cfg.residual_size, self.cfg.residual_size)
+            )
+            if i < self.num_layers - 1:
+                fully_connected.extend(
+                    self.activation_transform_layers(self.cfg.residual_size)
+                )
+
+        self.fully_connected = nn.Sequential(*fully_connected)
+        self.output_transform = nn.Sequential(*self.activation_transform_layers(self.cfg.residual_size))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        fx = self.fully_connected(x)
+        x = fx + x
+        x = self.output_transform(x)
+        return x
+
+
+
+class DL(Model):
+
+    def fit(self, data: Data):
+        model_cfg = ModelConfig(
+            data.num_features,
+            [500, 200],
+            0, 1000, 0.0)
+        self.model = NNModel(model_cfg).to(device)
+        self.model.train()
+
+        epochs = 200
+        batch_size = 300
+
+        optim = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
+        crit = torch.nn.CrossEntropyLoss()
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optim, T_0=epochs)
+
+        features = torch.from_numpy(data.features)\
+            .reshape(-1, data.num_features)\
+            .float()\
+            .to(device)
+        labels = torch.from_numpy(data.labels)\
+            .ravel()\
+            .long()\
+            .to(device) - 1
+
+        for i in range(epochs):
+            log.debug("Epoch %i / %i" % (i + 1, epochs))
+            index = torch.randperm(len(features), device=device)
+            batches = [index[j*batch_size:(j+1)*batch_size] for j in range(len(features)//batch_size)]
+            losses = list()
+            for j, batch_index in enumerate(batches):
+                batch_data = features[batch_index]
+                preds = self.model(batch_data)
+                loss = crit(preds, labels[batch_index])
+                losses.append(loss.item())
+                loss.backward()
+                optim.step()
+                optim.zero_grad()
+            log.debug("Mean loss: %.4f" % np.mean(losses))
+
+            scheduler.step()
+
+    @torch.no_grad()
+    def predict(self, data: Data) -> np.ndarray:
+        self.model.eval()
+        features = torch.from_numpy(data.features)\
+            .reshape(-1, data.num_features)\
+            .float()\
+            .to(device)
+
+        preds = self.model(features).cpu().numpy()
+
+        preds = np.argmax(preds, axis=-1) + 1
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=2).mode
+        return np.squeeze(preds)
+
+    def __str__(self) -> str:
+        return "NN"
