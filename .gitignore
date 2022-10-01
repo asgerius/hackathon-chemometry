@@ -8,6 +8,7 @@ local_*
 *.png
 *.npy
 out/
+dist-plots/
 
 # Latex
 *.aux
@@ -146,3 +147,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#ICA and PCA outputs
+/XCA

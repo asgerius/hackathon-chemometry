@@ -10,7 +10,7 @@ from sklearn.model_selection import KFold
 
 import model as model_module
 from data import load_from_pickle
-from preprocess import apply_combined_linear, apply_standardize, combined_linear, standardize
+from preprocess import apply_combined_linear, apply_derivatives, apply_logs, apply_standardize, combined_linear, get_derivatives, get_logarithm, standardize
 
 
 def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[str]):
@@ -20,6 +20,12 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
 
     log.section("Preprocessing")
     log("Preprocessing steps:", *preprocessing_steps)
+
+    # log_data = get_logarithm(data)
+    # data.features = apply_logs(data.features, log_data)
+    # deriv_data = get_derivatives(data)
+    # data.features = apply_derivatives(data.features, deriv_data)
+
     if "standardize" in preprocessing_steps:
         preprocessing_steps.remove("standardize")
         mu, std = standardize(data)
