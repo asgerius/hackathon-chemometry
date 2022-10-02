@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 
 import numpy as np
 from pelutils import log, LogLevels
+from scipy.stats import mode
 from sklearn.model_selection import KFold
 
 import model as model_module
@@ -30,6 +31,12 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
     with open(f"{path}/preprocess.pkl", "wb") as f:
         pickle.dump(preprocessing_steps, f)
 
+    if "within" in preprocessing_steps:
+        preprocessing_steps.remove("within")
+        m, s = get_within(data)
+        apply_within(data, m, s)
+        with open(f"{path}/apply-within.pkl", "wb") as f:
+            pickle.dump((m, s), f)
     if "standardize" in preprocessing_steps:
         preprocessing_steps.remove("standardize")
         mu, std = standardize(data)
@@ -42,12 +49,6 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
         apply_combined_linear(data, lr)
         with open(f"{path}/combined_linear.pkl", "wb") as f:
             pickle.dump(lr, f)
-    if "within" in preprocessing_steps:
-        preprocessing_steps.remove("within")
-        m, s = get_within(data)
-        apply_within(data, m, s)
-        with open(f"{path}/apply-within.pkl", "wb") as f:
-            pickle.dump((m, s), f)
 
     if preprocessing_steps:
         raise ValueError(f"The following preprocessing steps were not used: {preprocessing_steps}")
@@ -213,4 +214,5 @@ if __name__ == "__main__":
 
     log.configure(f"{dir}/train.log", print_level=LogLevels.DEBUG)
 
-    (cv_twostage if args.two_stage else cv)(dir, args.model_name, args.num_splits, args.preprocessing)
+    with log.log_errors:
+        (cv_twostage if args.two_stage else cv)(dir, args.model_name, args.num_splits, args.preprocessing)

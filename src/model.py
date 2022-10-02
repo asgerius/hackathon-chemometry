@@ -17,6 +17,7 @@ from sklearn.cross_decomposition import PLSRegression
 from scipy.stats import mode
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Ridge, SGDClassifier
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn import svm
