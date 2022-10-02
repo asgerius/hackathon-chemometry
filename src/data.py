@@ -44,6 +44,7 @@ class Data:
     labels: np.ndarray
 
     def __post_init__(self):
+
         self.num_labels = len(pd.unique(self.labels.flat))
 
     @property
@@ -69,6 +70,24 @@ class Data:
                 self.labels[index].copy(),
             )
 
+    def treated_labels(self) -> Data:
+        labels = self.labels.ravel().copy()
+        labels[labels==3] = 2
+        return Data(
+            self.nm.copy(),
+            self.features.copy(),
+            labels.reshape(self.labels.shape)
+        )
+
+    def no_treated(self) -> Data:
+        labels = self.labels[:, 0, 0]
+        include = labels != 1
+        return Data(
+            self.nm.copy(),
+            self.features[include].copy(),
+            self.labels[include].copy()
+        )
+
     def __len__(self) -> int:
         return self.features.shape[0]
 
@@ -79,10 +98,16 @@ def save_to_pickle(data: Data):
 
 def load_from_pickle() -> Data:
     try:
+        nms = { 1492, 1580, 1710, 1674, 1778, 2252 }
+        nm = np.load("nm.npy")
+        features = np.load("features.npy")
+        labels = np.load("labels.npy")
+        # features = features[..., [x in nms for x in nm]]
+        nm = nm
         return Data(
-            nm = np.load("nm.npy"),
-            features = np.load("features.npy")[..., ::2],
-            labels = np.load("labels.npy"),
+            nm[::2],
+            features[..., ::2],
+            labels,
         )
     except FileNotFoundError:
         df = load_dataframe()
