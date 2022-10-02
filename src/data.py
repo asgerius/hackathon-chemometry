@@ -81,7 +81,7 @@ def load_from_pickle() -> Data:
     try:
         return Data(
             nm = np.load("nm.npy"),
-            features = np.load("features.npy"),
+            features = np.load("features.npy")[..., ::2],
             labels = np.load("labels.npy"),
         )
     except FileNotFoundError:

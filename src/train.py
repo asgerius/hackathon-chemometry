@@ -10,13 +10,14 @@ from sklearn.model_selection import KFold
 
 import model as model_module
 from data import load_from_pickle
-from preprocess import apply_combined_linear, apply_derivatives, apply_logs, apply_standardize, apply_within_mean, apply_within_sd, combined_linear, get_derivatives, get_logarithm, get_within_mean, get_within_sd, standardize
+from preprocess import apply_combined_linear, apply_derivatives, apply_logs, apply_standardize, apply_within, combined_linear, get_derivatives, get_logarithm, get_within, standardize
 
 
 def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[str]):
 
     log.section("Loading data")
     data = load_from_pickle()
+    log(data.features.shape)
 
     log.section("Preprocessing")
     log("Preprocessing steps:", *preprocessing_steps)
@@ -25,10 +26,6 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
     # data.features = apply_logs(data.features, log_data)
     # deriv_data = get_derivatives(data)
     # data.features = apply_derivatives(data.features, deriv_data)
-    # data_mean = get_within_mean(data)
-    # data.features = apply_within_mean(data, data_mean)
-    data_sd = get_within_sd(data)
-    data.features = apply_within_sd(data, data_sd)
 
     if "standardize" in preprocessing_steps:
         preprocessing_steps.remove("standardize")
@@ -43,6 +40,9 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
         with open(f"{path}/combined_linear.pkl", "wb") as f:
             pickle.dump(lr, f)
 
+    m, s = get_within(data)
+    apply_within(data, m, s)
+
     if preprocessing_steps:
         raise ValueError(f"The following preprocessing steps were not used: {preprocessing_steps}")
 
@@ -53,6 +53,8 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
         log.section("Split %i / %i" % (i + 1, num_splits))
         train_data = data.split_by_index(train_index)
         test_data = data.split_by_index(test_index)
+        log(train_data.features.shape)
+        log(test_data.features.shape)
 
         model: model_module.Model = getattr(model_module, model_name)()
         log("Got model %s" % model)

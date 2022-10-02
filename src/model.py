@@ -112,7 +112,7 @@ class Mixed(Model):
         return "PartialLeastSquares(n_components =%d)"% self.pls.n_components
 
 class MixedBagging(Model):
-    def __init__(self, n=50, n_components = 50, alpha = 0.01):
+    def __init__(self, n=50, n_components = 50, alpha = 0.001):
         self.n = n
         self.models = [
             [PLSRegression(n_components=n_components) for _ in range(n)],
@@ -185,7 +185,7 @@ class SDG(Model):
 class RidgeRegression(Model):
 
     def __init__(self, alpha=0.001):
-        self.ridge = Ridge(alpha=alpha, max_iter= 5000, solver='saga')
+        self.ridge = Ridge(alpha=alpha, max_iter= 5000)
 
     def fit(self, data: Data):
         features = data.features.reshape((-1, data.features.shape[-1]))
