@@ -105,8 +105,7 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
 
     log("Fitting")
     with log.no_log:
-        pass
-        # model.fit(data)
+        model.fit(data)
 
     log("Saving model")
     model.save(path)
