@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 
 def load_dataframe() -> pd.DataFrame:
-    return pd.read_csv("data.txt", delimiter="; ")
+    return pd.read_csv("data-test.txt", delimiter="; ")
 
 def data_as_arrays(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     num_scan = len(pd.unique(df.Scan))
@@ -21,19 +21,14 @@ def data_as_arrays(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray
     sample_map = {int(v) - 1: i for i, v in enumerate(samples)}
 
     num_features = 700
-    nm = np.array([int(x) for x in df.columns[4:]])
+    nm = np.array([int(x) for x in df.columns[3:]])
     features = np.empty((num_sample, num_replicate, num_scan, num_features))
     labels = np.empty((num_sample, num_replicate, num_scan), dtype=int)
     for i, row in df.iterrows():
         s = sample_map[int(row.Sample) - 1]
         r = int(row.Replicate) - 1
         sc = int(row.Scan) - 1
-        features[s, r, sc] = row[df.columns[4:]].values
-        labels[s, r, sc] = row.Type
-
-    for i in range(num_scan):
-        for j in range(num_replicate):
-            assert (labels[i, j, 0] == labels[i, j]).all()
+        features[s, r, sc] = row[df.columns[3:]].values
 
     return nm, features, labels
 
@@ -92,16 +87,16 @@ class Data:
         return self.features.shape[0]
 
 def save_to_pickle(data: Data):
-    np.save("nm", data.nm)
-    np.save("features", data.features)
-    np.save("labels", data.labels)
+    np.save("nm-test", data.nm)
+    np.save("features-test", data.features)
+    np.save("labels-test", data.labels)
 
 def load_from_pickle() -> Data:
     try:
         nms = { 1492, 1580, 1710, 1674, 1778, 2252 }
-        nm = np.load("nm.npy")
-        features = np.load("features.npy")
-        labels = np.load("labels.npy")
+        nm = np.load("nm-test.npy")
+        features = np.load("features-test.npy")
+        labels = np.load("labels-test.npy")
         # features = features[..., [x in nms for x in nm]]
         nm = nm
         return Data(
