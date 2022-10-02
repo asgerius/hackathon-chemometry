@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Generator
 
 import numpy as np
 import pandas as pd
@@ -59,16 +60,14 @@ class Data:
     def one_hot_labels(self) -> np.ndarray:
         return F.one_hot(torch.from_numpy(self.labels) - 1, num_classes=3).numpy()
 
-    def bagging(self, n: int) -> list[Data]:
-        datas = list()
+    def bagging(self, n: int) -> Generator[Data, None, None]:
         for i in range(n):
             index = np.random.randint(0, len(self), len(self))
-            datas.append(Data(
+            yield Data(
                 self.nm.copy(),
                 self.features[index].copy(),
                 self.labels[index].copy(),
-            ))
-        return datas
+            )
 
     def __len__(self) -> int:
         return self.features.shape[0]

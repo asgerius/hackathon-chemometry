@@ -2,11 +2,7 @@ from __future__ import annotations
 
 import abc
 import pickle
-<<<<<<< HEAD
-from pyexpat import features
-=======
 from dataclasses import dataclass
->>>>>>> 9908f64... Shitty NN
 
 import numpy as np
 import pelutils.ds.distributions as dists
@@ -18,6 +14,7 @@ from sklearn.cross_decomposition import PLSRegression
 from scipy.stats import mode
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Ridge, SGDClassifier
+from tqdm import tqdm
 
 from data import Data
 
@@ -82,25 +79,21 @@ class PartialLeastSquares(Model):
         return "PartialLeastSquares(n_components =%d)"% self.pls.n_components
 
 class Mixed(Model):
-    def __init__(self, n_components = 50, alpha = 0.01, n_estimators=500):
+    def __init__(self, n_components = 50, alpha = 0.01):
         self.pls = PLSRegression(n_components=n_components, max_iter= 5000)
         self.ridge = Ridge(alpha=alpha, max_iter= 5000)
-        # self.forest = RandomForestClassifier(n_estimators=n_estimators)
 
     def fit(self, data: Data):
         features = data.features.reshape((-1, data.features.shape[-1]))
         labels = data.one_hot_labels().reshape(-1,3)
         self.pls.fit(features, labels)
         self.ridge.fit(features, labels)
-        # self.forest.fit(features, labels)
 
     def predict(self, data: Data) -> np.ndarray:
         features = data.features.reshape((-1, data.features.shape[-1]))
         preds_pls = self.pls.predict(features).argmax(axis=1) + 1
         preds_ridge = self.ridge.predict(features).argmax(axis=1) + 1
-        # preds_forest = self.forest.predict(features).argmax(axis=1) + 1
         preds = np.concatenate((preds_pls,preds_ridge), axis= -1)
-        # preds = np.concatenate((preds,preds_forest), axis= -1)
 
         preds = preds.reshape(data.labels.shape)
         preds = mode(preds, axis=2, keepdims=True).mode
@@ -115,7 +108,50 @@ class Mixed(Model):
 
     def __str__(self) -> str:
         return "PartialLeastSquares(n_components =%d)"% self.pls.n_components
-        
+
+class MixedBagging(Model):
+    def __init__(self, n=50, n_components = 50, alpha = 0.01):
+        self.n = n
+        self.models = [
+            [PLSRegression(n_components=n_components) for _ in range(n)],
+            [Ridge(alpha=alpha) for _ in range(n)],
+        ]
+        self.num_models = len(self.models)
+
+    def fit(self, data: Data):
+
+        for i, d in tqdm(enumerate(data.bagging(self.n)), total=self.n):
+            features = d.features.reshape((-1, d.features.shape[-1]))
+            labels = d.one_hot_labels().reshape(-1, 3)
+
+            for j in range(self.num_models):
+                self.models[j][i].fit(features, labels)
+
+    def predict(self, data: Data) -> np.ndarray:
+
+        preds = [np.empty((self.n, *data.labels.shape, 3)) for _ in range(self.num_models)]
+        for i in range(self.n):
+            features = data.features.reshape((-1, data.num_features))
+            for j in range(self.num_models):
+                preds[j][i] = self.models[j][i].predict(features).reshape((*data.labels.shape, 3))
+
+        preds = np.concatenate(preds, axis=0)
+        preds = preds.transpose(1, 2, 3, 0, 4)
+        lab_preds = preds.argmax(axis=-1) + 1
+        lab_preds = lab_preds.reshape((*lab_preds.shape[:-2], -1))
+        lab_preds = mode(lab_preds, axis=-1).mode
+        return np.squeeze(lab_preds)
+
+
+    # def predict(self, data: Data) -> np.ndarray:
+    #     features = data.features.reshape((-1, data.features.shape[-1]))
+    #     preds = self.ridge.predict(features).argmax(axis=1) + 1
+    #     preds = preds.reshape(data.labels.shape)
+    #     preds = mode(preds, axis=-1).mode
+    #     return np.squeeze(preds)
+
+    def __str__(self) -> str:
+        return "Mixed Bagging"
 
 class SDG(Model):
 
@@ -147,7 +183,7 @@ class SDG(Model):
 class RidgeRegression(Model):
 
     def __init__(self, alpha=0.001):
-        self.ridge = Ridge(alpha=alpha, max_iter= 5000)
+        self.ridge = Ridge(alpha=alpha, max_iter= 5000, solver='saga')
 
     def fit(self, data: Data):
         features = data.features.reshape((-1, data.features.shape[-1]))
