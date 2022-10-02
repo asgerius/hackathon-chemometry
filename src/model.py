@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pelutils.ds.distributions as dists
+from sklearn import neighbors
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,6 +15,7 @@ from sklearn.cross_decomposition import PLSRegression
 from scipy.stats import mode
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Ridge, SGDClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from tqdm import tqdm
 
 from data import Data
@@ -199,6 +201,25 @@ class RidgeRegression(Model):
 
     def __str__(self) -> str:
         return "RidgeRegression(alpha=%s)" % self.ridge.alpha
+
+class KNN(Model):
+    def __init__(self,n_neighbors=5, weights="distance"):
+        self.KNN = neighbors.KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)        
+        
+    def fit(self, data: Data):
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        labels = data.one_hot_labels().reshape(-1, 3)
+        self.KNN.fit(features, labels)
+
+    def predict(self, data: Data):
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        preds = self.KNN.predict(features).argmax(axis=1) + 1
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=-1).mode
+        return np.squeeze(preds)
+    
+    def __str__(self) -> str:
+        return "KNN"
 
 class StatShit(Model):
 
