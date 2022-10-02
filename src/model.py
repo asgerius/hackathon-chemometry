@@ -203,11 +203,11 @@ class RidgeRegression(Model):
         return "RidgeRegression(alpha=%s)" % self.ridge.alpha
 
 class KNN(Model):
-    def __init__(self,n_neighbors=5, weights="distance"):
+    def __init__(self,n_neighbors=8, weights="distance"):
         self.KNN = neighbors.KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)        
         
     def fit(self, data: Data):
-        features = data.features.reshape((-1, data.features.shape[-1]))
+        features = data.features.reshpe((-1, data.features.shape[-1]))
         labels = data.one_hot_labels().reshape(-1, 3)
         self.KNN.fit(features, labels)
 

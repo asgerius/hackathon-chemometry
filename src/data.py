@@ -58,7 +58,7 @@ class Data:
         )
 
     def one_hot_labels(self) -> np.ndarray:
-        return F.one_hot(torch.from_numpy(self.labels) - 1, num_classes=3).numpy()
+        return F.one_hot(torch.from_numpy(self.labels).to(torch.int64) - 1, num_classes=3).numpy()
 
     def bagging(self, n: int) -> Generator[Data, None, None]:
         for i in range(n):
