@@ -6,12 +6,11 @@ from argparse import ArgumentParser
 
 import numpy as np
 from pelutils import log, LogLevels
-from scipy.stats import mode
 from sklearn.model_selection import KFold
 
 import model as model_module
 from data import Data, load_from_pickle
-from preprocess import apply_combined_linear, apply_derivatives, apply_logs, apply_standardize, apply_within, combined_linear, get_derivatives, get_logarithm, get_within, standardize
+from preprocess import apply_combined_linear, apply_standardize, apply_within, combined_linear, get_within, standardize
 
 
 def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[str]):
@@ -23,13 +22,11 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
     log.section("Preprocessing")
     log("Preprocessing steps:", *preprocessing_steps)
 
-    # log_data = get_logarithm(data)
-    # data.features = apply_logs(data.features, log_data)
-    # deriv_data = get_derivatives(data)
-    # data.features = apply_derivatives(data.features, deriv_data)
-
     with open(f"{path}/preprocess.pkl", "wb") as f:
         pickle.dump(preprocessing_steps, f)
+
+    mis_assignments = np.zeros(3, dtype=int)
+    assignments = np.zeros((3, 3), dtype=int)
 
     if "within" in preprocessing_steps:
         preprocessing_steps.remove("within")
@@ -57,6 +54,7 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
     accs = list()
 
     for i, (train_index, test_index) in enumerate(kfold.split(data.features)):
+        log.debug(train_index.tolist(), test_index.tolist())
         log.section("Split %i / %i" % (i + 1, num_splits))
         train_data = data.split_by_index(train_index)
         test_data = data.split_by_index(test_index)
@@ -70,8 +68,21 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
         model.fit(train_data)
 
         log("Predicting")
-        preds = model.predict(test_data)
-        labels = test_data.labels[:, :, 0]
+        preds = model.predict(test_data).ravel()
+        labels = test_data.labels[:, :, 0].ravel()
+
+        for i in range(data.num_labels):
+            p = preds[labels==i+1]
+            log.debug(
+                "Label %i" % (i + 1),
+                "%i / %i, %.2f %%" % ((p == i + 1).sum(), p.size, 100 * (p==i+1).sum() / p.size),
+            )
+            mis_assignments[i] += (p != i + 1).sum()
+            p = np.append(p, 1)
+            p = np.append(p, 2)
+            p = np.append(p, 3)
+            assignments[i] += np.unique(p, return_counts=True)[1]
+            assignments[i] -= 1
 
         correctly_classified = (preds == labels).sum()
         total = preds.size
@@ -80,6 +91,9 @@ def cv(path: str, model_name: str, num_splits: int, preprocessing_steps: list[st
             "%.2f %%" % (100 * correctly_classified / total),
         )
         accs.append(correctly_classified / total)
+
+    log("Misclassifications", mis_assignments.tolist(), mis_assignments / mis_assignments.sum())
+    log("Assignments", assignments)
 
     log.section("Done classifying")
     log("Mean accuracy: %.2f %%" % (100 * np.mean(accs)))

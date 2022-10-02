@@ -21,6 +21,7 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn import svm
+from sklearn.decomposition import NMF
 from tqdm import tqdm
 
 from data import Data
