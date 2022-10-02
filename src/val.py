@@ -43,6 +43,7 @@ def cv(path: str):
         raise ValueError(f"The following preprocessing steps were not used: {preprocessing_steps}")
 
     preds = model.predict(data).ravel()
+    log(np.unique(preds, return_counts=True)[1])
     with open(f"{path}/preds.txt", "w", encoding="ascii") as f:
         for p in preds:
             f.write("%i\n" % p)
