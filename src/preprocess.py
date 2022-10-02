@@ -58,11 +58,11 @@ def apply_within(data: Data, within_mean: np.ndarray, within_std: np.ndarray):
     features = data.features
     wmean = np.stack(data.labels.shape[1] * [within_mean], axis=1)
     wmean = np.stack(data.labels.shape[2] * [wmean], axis=2)
-    features = np.concatenate([features, wmean], axis=-1)
+    data.features = np.concatenate([features, wmean], axis=-1)
 
     # wstd = np.stack(data.labels.shape[1] * [within_std], axis=1)
     # wstd = np.stack(data.labels.shape[2] * [wstd], axis=2)
-    # data.features = np.concatenate([features, wstd], axis=-1)
+    # data.features = np.concatenate([data.features, wstd], axis=-1)
 
 if __name__ == "__main__":
 
