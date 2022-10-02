@@ -154,14 +154,6 @@ class MixedBagging(Model):
         lab_preds = mode(lab_preds, axis=-1).mode
         return np.squeeze(lab_preds)
 
-
-    # def predict(self, data: Data) -> np.ndarray:
-    #     features = data.features.reshape((-1, data.features.shape[-1]))
-    #     preds = self.ridge.predict(features).argmax(axis=1) + 1
-    #     preds = preds.reshape(data.labels.shape)
-    #     preds = mode(preds, axis=-1).mode
-    #     return np.squeeze(preds)
-
     def __str__(self) -> str:
         return "Mixed Bagging"
 
