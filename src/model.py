@@ -118,9 +118,10 @@ class Mixed(Model):
         return "PartialLeastSquares(n_components =%d)"% self.pls.n_components
 
 class MixedBagging(Model):
-    def __init__(self, n=50, n_components = 50, alpha = 0.001):
+    def __init__(self, n=50, n_components = 50, alpha = 0.01):
         self.n = n
         self.models = [
+            [LinearDiscriminantAnalysis() for _ in range(n)],
             [PLSRegression(n_components=n_components) for _ in range(n)],
             [Ridge(alpha=alpha) for _ in range(n)],
         ]
@@ -130,20 +131,23 @@ class MixedBagging(Model):
 
         for i, d in tqdm(enumerate(data.bagging(self.n)), total=self.n):
             features = d.features.reshape((-1, d.features.shape[-1]))
+            self.models[0][i].fit(features, d.labels.ravel())
             labels = d.one_hot_labels().reshape(-1, 3)
 
-            for j in range(self.num_models):
+            for j in range(1, self.num_models):
                 self.models[j][i].fit(features, labels)
 
     def predict(self, data: Data) -> np.ndarray:
 
-        preds = [np.empty((self.n, *data.labels.shape, 3)) for _ in range(self.num_models)]
+        preds0 = np.empty((self.n, *data.labels.shape, 3))
+        preds = [np.empty((self.n, *data.labels.shape, 3)) for _ in range(1, self.num_models)]
         for i in range(self.n):
             features = data.features.reshape((-1, data.num_features))
-            for j in range(self.num_models):
-                preds[j][i] = self.models[j][i].predict(features).reshape((*data.labels.shape, 3))
+            preds0[i] = F.one_hot(torch.from_numpy(self.models[0][i].predict(features).reshape(len(data), 3, 32)) - 1, num_classes=3).numpy()
+            for j in range(1, self.num_models):
+                preds[j-1][i] = self.models[j][i].predict(features).reshape((*data.labels.shape, 3))
 
-        preds = np.concatenate(preds, axis=0)
+        preds = np.concatenate([preds0] + preds, axis=0)
         preds = preds.transpose(1, 2, 3, 0, 4)
         lab_preds = preds.argmax(axis=-1) + 1
         lab_preds = lab_preds.reshape((*lab_preds.shape[:-2], -1))
