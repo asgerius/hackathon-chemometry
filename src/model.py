@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 import pelutils.ds.distributions as dists
 from sklearn import neighbors
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,6 +18,8 @@ from scipy.stats import mode
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import Ridge, SGDClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn import svm
 from tqdm import tqdm
 
 from data import Data
@@ -207,8 +211,10 @@ class KNN(Model):
         self.KNN = neighbors.KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)        
         
     def fit(self, data: Data):
-        features = data.features.reshpe((-1, data.features.shape[-1]))
+        features = data.features.reshape((-1, data.features.shape[-1]))
         labels = data.one_hot_labels().reshape(-1, 3)
+        print(labels.shape)
+        print(features.shape)
         self.KNN.fit(features, labels)
 
     def predict(self, data: Data):
@@ -220,6 +226,51 @@ class KNN(Model):
     
     def __str__(self) -> str:
         return "KNN"
+
+class LDA(Model):
+    def __init__(self,solver="svd"):
+        self.LDA = LinearDiscriminantAnalysis(solver=solver)
+        
+    def fit(self, data: Data):
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        #labels = data.one_hot_labels().reshape(-1, 3)
+        labels = data.labels.ravel()
+        print(labels.shape)
+        print(features.shape)
+        self.LDA.fit(features, labels)
+
+    def predict(self, data: Data):
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        preds = self.LDA.predict(features)
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=-1).mode
+        return np.squeeze(preds)
+    
+    def __str__(self) -> str:
+        return "LDA"
+    
+class SVM(Model):
+    def __init__(self):
+        self.SVM = svm.SVC(gamma=0.001)
+        
+    def fit(self, data: Data):
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        labels = data.labels.ravel()
+        print(labels.shape)
+        print(features.shape)
+        self.SVM.fit(features, labels)
+
+    def predict(self, data: Data):
+        features = data.features.reshape((-1, data.features.shape[-1]))
+        preds = self.SVM.predict(features)
+        print(preds)
+        preds = preds.reshape(data.labels.shape)
+        preds = mode(preds, axis=-1).mode
+        return np.squeeze(preds)
+    
+    def __str__(self) -> str:
+        return "SVM"
+    
 
 class StatShit(Model):
 
