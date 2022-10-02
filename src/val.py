@@ -44,9 +44,12 @@ def cv(path: str):
 
     preds = model.predict(data).ravel()
     log(np.unique(preds, return_counts=True)[1])
-    with open(f"{path}/preds.txt", "w", encoding="ascii") as f:
-        for p in preds:
-            f.write("%i\n" % p)
+    with open(f"{path}/preds.csv", "w", encoding="ascii") as f:
+        preds_iter = iter(preds)
+        f.write("Sample,Replicate,Type\n")
+        for i in range(201, 201 + len(preds) // 3):
+            for j in range(1, 4):
+                f.write("%i,%i,%i\n" % (i, j, next(preds_iter)))
 
 if __name__ == "__main__":
     parser = ArgumentParser()
